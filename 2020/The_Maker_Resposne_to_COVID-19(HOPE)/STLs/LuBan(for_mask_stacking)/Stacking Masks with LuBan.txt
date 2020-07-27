@@ -1,0 +1,6 @@
+1. Download LuBan from www.luban3d.com via Dropbox or Google drive download link.
+2. Run LuBan.
+3. Go to Help -> Stack mask strap.
+4. Select a mask strap STL.
+5. Enter two or three parameters.
+6. Save the stacked results to a new STL.
