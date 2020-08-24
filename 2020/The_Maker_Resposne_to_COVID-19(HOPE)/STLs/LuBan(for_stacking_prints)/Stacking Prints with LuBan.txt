@@ -2,5 +2,5 @@
 2. Run LuBan.
 3. Go to Help -> Stack mask strap.
 4. Select a mask strap STL.
-5. Enter two or three parameters.
+5. Enter two or three parameters (these will vary based on your print setup. Experiment!)
 6. Save the stacked results to a new STL.
