@@ -1,0 +1,65 @@
+name: Workflow drift detection
+
+on:
+  schedule:
+    - cron: '0 8 * * 1'   # every Monday 08:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  drift:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check for unsigned workflow commits since last week
+        id: check
+        run: |
+          set -euo pipefail
+          SINCE=$(date -d '7 days ago' +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date -v-7d +%Y-%m-%dT%H:%M:%SZ)
+          ISSUES=""
+          while IFS= read -r sha; do
+            [ -z "$sha" ] && continue
+            VERIFIED=$(git verify-commit "$sha" 2>/dev/null && echo "yes" || echo "no")
+            AUTHOR_EMAIL=$(git log -1 --format='%ae' "$sha")
+            FILES=$(git diff-tree --no-commit-id -r --name-only "$sha" | grep '^\.github/' || true)
+            if [ -n "$FILES" ]; then
+              if [ "$VERIFIED" = "no" ]; then
+                ISSUES="${ISSUES}\n- \`${sha:0:7}\` (${AUTHOR_EMAIL}): unsigned commit touched \`${FILES//$'\n'/', '}\`"
+              fi
+            fi
+          done < <(git log --format='%H' --since="$SINCE" -- .github/)
+          if [ -n "$ISSUES" ]; then
+            echo "found=true" >> "$GITHUB_OUTPUT"
+            printf 'details<<EOF\n%b\nEOF\n' "$ISSUES" >> "$GITHUB_OUTPUT"
+          else
+            echo "found=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Open issue if drift detected
+        if: steps.check.outputs.found == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: 'Workflow drift detected — unsigned commits touched .github/',
+              body: [
+                '## Workflow drift alert',
+                '',
+                'The scheduled drift-detection scan found unsigned commits modifying `.github/` in the past 7 days:',
+                '',
+                '${{ steps.check.outputs.details }}',
+                '',
+                'Please review these commits immediately and verify they are legitimate.',
+                '',
+                '*This issue was opened automatically by the drift-detection workflow.*'
+              ].join('\n'),
+              labels: ['security']
+            })
