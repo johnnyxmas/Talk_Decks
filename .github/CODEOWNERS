@@ -1,0 +1,4 @@
+# Auto-applied during 2026-05-18 incident remediation.
+# Ensures workflow / Actions changes auto-request review from @johnnyxmas.
+/.github/ @johnnyxmas
+.github/workflows/ @johnnyxmas
